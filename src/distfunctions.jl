@@ -45,20 +45,17 @@ function icdf!(F⁻¹, F, xgrid, pgrid, tol = 1e-9)
             continue
         else
             #quadratic interpolation
-            if i == N #|| (1 - F[i]) < tol # the p[j] = 1 case: F[i], F[i+1], … will be 1.
+            if i == N || (1 - F[i+1]) < tol # the p[j] = 1 case: F[i], F[i+1], … will be 1.
+                if i < 3 # dirac delta case
+                    F⁻¹[j] = xgrid[i-2]
+                    continue
+                end
                 p₋ = F[i-2]
                 p₊ = F[i-1]
                 p₊₊ = F[i]
                 x₋ = xgrid[i-2]
                 x₊ = xgrid[i-1]
                 x₊₊ = xgrid[i]
-            #= elseif (1 - F[i+1]) < tol # avoid interpolationg over the kink in the cdf at p = 1
-                p₋ = F[i-2]
-                p₊ = F[i-1]
-                p₊₊ = F[i]
-                x₋ = xgrid[i-2]
-                x₊ = xgrid[i-1]
-                x₊₊ = xgrid[i] =#
             else
                 p₋ = F[i-1]
                 p₊ = F[i]
@@ -90,19 +87,6 @@ function icdf!(F⁻¹, F, xgrid, pgrid, tol = 1e-9)
                     + x₊ * (p-p₋)/(p₊-p₋) * (p-p₊₊)/(p₊-p₊₊) 
                     + x₊₊ * (p-p₋)/(p₊₊-p₋) * (p-p₊)/(p₊₊-p₊) )
 
-            #=
-            # linear interpolation
-            x₋ = xgrid[i-1]
-            x₊ = xgrid[i] 
-            p₋ = F[i-1]
-            p₊ = F[i]
-
-            if isapprox(p₊, p₋)
-                F⁻¹[j] =  x₋ # see the inf in the definition
-            else
-                F⁻¹[j] =  x₋ + (p - p₋) * (x₊ - x₋) / (p₊ - p₋)
-            end
-            =#
             if F⁻¹[j] < xgrid[1]
                 F⁻¹[j] = xgrid[1]
             elseif F⁻¹[j] > xgrid[end]
@@ -154,14 +138,6 @@ function iicdf!(F, f, F⁻¹, xgrid, pgrid, tol=1e-9)
                 x₋ = F⁻¹[j]
                 x₊ = F⁻¹[j+1]
                 x₊₊ = F⁻¹[j+2]
-                #= F[i] = p₋ + (x - x₋) * (p₊ - p₋) / (x₊ - x₋) 
-                f[i] = (p₊ - p₋) / (x₊ - x₋) 
-                if F[i] < pgrid[1]
-                    F[i] = pgrid[1]
-                elseif F[i] > pgrid[end]
-                    F[i] = pgrid[end]
-                end
-                continue =#
             elseif j == M
                 p₋ = pgrid[j-2]
                 p₊ = pgrid[j-1]
@@ -169,13 +145,6 @@ function iicdf!(F, f, F⁻¹, xgrid, pgrid, tol=1e-9)
                 x₋ = F⁻¹[j-2]
                 x₊ = F⁻¹[j-1]
                 x₊₊ = F⁻¹[j]
-            #=elseif j == (M-1)
-                p₋ = pgrid[j-2]
-                p₊ = pgrid[j-1]
-                p₊₊ = pgrid[j]abs
-                x₋ = F⁻¹[j-2]
-                x₊ = F⁻¹[j-1]
-                x₊₊ = F⁻¹[j]=#
             else
                 p₋ = pgrid[j-1]
                 p₊ = pgrid[j]
@@ -224,63 +193,12 @@ function iicdf!(F, f, F⁻¹, xgrid, pgrid, tol=1e-9)
                     + p₊₊ * 1/(x₊₊-x₋) * (x-x₊)/(x₊₊-x₊)
                     + p₊₊ * (x-x₋)/(x₊₊-x₋) * 1/(x₊₊-x₊) )
 
-
-            #= 
-            I_icdf = y -> ( x₋*(y-p₊)/(p₋-p₊)*(y-p₊₊)/(p₋-p₊₊) + x₊*(y-p₋)/(p₊-p₋)*(y-p₊₊)/(p₊-p₊₊) 
-                            + x₊₊*(y-p₋)/(p₊₊-p₋)*(y-p₊)/(p₊₊-p₊) )
-
-            if j == N
-                upper = p₊₊
-            else
-                upper = p₊
-            end
-            lower = p₋
-            F[i] = 0.5*(upper + lower)
-            ϵ = I_icdf(F[i]) - x
-            for k in 1:100
-                if ϵ > 0 # I_icdf(F[i]) > x
-                    upper = F[i]
-                else
-                    lower = F[i]
-                end
-                F[i] = 0.5*(F[i] + upper)
-                ϵ = I_icdf(F[i]) - x
-                if abs(ϵ) < tol
-                    break
-                end
-            end 
-            =#
-
             # fix values outside of allowed domain
             if F[i] < pgrid[1]
                 F[i] = pgrid[1]
             elseif F[i] > pgrid[end]
                 F[i] = pgrid[end]
             end
-
-            #=
-            if i == 1
-                f[1] = F[1] / (xgrid[2] - xgrid[1])
-            else
-                ∂xI_icdf_i = ( x₋*(F[i]-p₊)/(p₋-p₊)/(p₋-p₊₊) + x₋/(p₋-p₊)*(F[i]-p₊₊)/(p₋-p₊₊)
-                           + x₊*(F[i]-p₋)/(p₊-p₋)/(p₊-p₊₊) + x₊/(p₊-p₋)*(F[i]-p₊₊)/(p₊-p₊₊) 
-                           + x₊₊*(F[i]-p₋)/(p₊₊-p₋)/(p₊₊-p₊) + x₊₊/(p₊₊-p₋)*(F[i]-p₊)/(p₊₊-p₊) )
-                f[i] = 1 / ∂xI_icdf_i
-            end
-            =#
-            #= 
-            if isapprox(x₊, x₋)
-                F[i] = p₋
-                if i == 1
-                    f[i] = F[i] / (xgrid[2] - xgrid[1])
-                else
-                    f[i] = (F[i] - F[i-1]) / (xgrid[i] - xgrid[i-1])
-                end
-            else
-                F[i] = p₋ + (x - x₋) * (p₊ - p₋) / (x₊ - x₋) 
-                f[i] = (p₊ - p₋) / (x₊ - x₋) 
-            end
-            =#
         end
     end
 end
@@ -384,7 +302,46 @@ function iicdf_exact(F⁻¹, pgrid, xgrid, tol=1e-12)
     return F
 end
 
-function add_iicdf(F⁻¹_v, pgrid_v, tol=1e-12)
+function interpolate_to_grid(F⁻¹, pgrid, new_pgrid, tol=1e-12)
+
+    m = length(pgrid)
+    M = length(new_pgrid)
+    F⁻¹_new = zero(new_pgrid)
+
+    j = 1
+    for i in 1:M
+        p = new_pgrid[i]
+
+        while pgrid[j] < p && j < m
+            j += 1
+        end
+        # now pⱼ >= p
+        if j == 1
+            if length(pgrid) == 1 # dirac delta
+                F⁻¹_new[i] = F⁻¹[j]
+                continue
+            else
+                p₋ = pgrid[j]
+                p₊ = pgrid[j+1]
+                F⁻¹₋ = F⁻¹[j]
+                F⁻¹₊ = F⁻¹[j+1]
+            end
+        else
+            p₋ = pgrid[j-1]
+            p₊ = pgrid[j]
+            F⁻¹₋ = F⁻¹[j-1]
+            F⁻¹₊ = F⁻¹[j]
+        end
+        if p₊ - p₋ < tol
+            F⁻¹_new[i] = F⁻¹₋
+        else
+            F⁻¹_new[i] = F⁻¹₋ + (p - p₋) * (F⁻¹₊ - F⁻¹₋) / (p₊ - p₋)
+        end
+    end
+    return F⁻¹_new    
+end
+
+function iicdf_common_grid(F⁻¹_v, pgrid_v, tol=1e-12)
 
     n = length(F⁻¹_v)
 
@@ -393,8 +350,8 @@ function add_iicdf(F⁻¹_v, pgrid_v, tol=1e-12)
         M += length(pgrid_v[i])
     end
     
-    ΣF⁻¹_v = [ zeros(M) for _ in 1:n]
-    Σpgrid = zeros(M)
+    ΣF⁻¹_v = [ [] for _ in 1:n]
+    Σpgrid = []
     i_vec = [0 for _ in 1:n]
     p₀ = 2
 
@@ -417,30 +374,30 @@ function add_iicdf(F⁻¹_v, pgrid_v, tol=1e-12)
         # update interpolation point for active function
         i_vec[iₐ] += 1
 
-#        if p₀ - p₀₋ < tol && j != 1 # if new p₀ is identical with a previous one, no need to duplicate
-#            continue
-#        end
+        if p₀ - p₀₋ < tol && j != 1 # if new p₀ is identical with a previous one, no need to duplicate
+            continue
+        end
 
         # add p-grid value to the grid union
-        #push!(Σpgrid, p₀)
-        Σpgrid[j] = p₀
+        push!(Σpgrid, p₀)
+        #Σpgrid[j] = p₀
         for i in 1:n
             # calculate interpolant value
             if i_vec[i] == 0 # this icdf is not yet different from zero
-                #push!(ΣF⁻¹_v[i], 0.0)
-                ΣF⁻¹_v[i][j] = 0
+                push!(ΣF⁻¹_v[i], 0.0)
+                #ΣF⁻¹_v[i][j] = 0
             elseif i_vec[i] == 1 # first icdf value different from zero
                 if length(pgrid_v[i]) == 1 # dirac delta
-                    #push!(ΣF⁻¹_v[i], F⁻¹_v[i][i_vec[i]])
-                    ΣF⁻¹_v[i][j] = F⁻¹_v[i][i_vec[i]]
+                    push!(ΣF⁻¹_v[i], F⁻¹_v[i][i_vec[i]])
+                    #ΣF⁻¹_v[i][j] = F⁻¹_v[i][i_vec[i]]
                 else
                     p₋ = pgrid_v[i][i_vec[i]]
                     p₊ = pgrid_v[i][i_vec[i]+1]
                     F⁻¹₋ = F⁻¹_v[i][i_vec[i]]
                     F⁻¹₊ = F⁻¹_v[i][i_vec[i]+1]
                     F⁻¹_i = F⁻¹₋ + (p₀ - p₋) * (F⁻¹₊ - F⁻¹₋) / (p₊ - p₋)
-                    #push!(ΣF⁻¹_v[i], F⁻¹_i)
-                    ΣF⁻¹_v[i][j] = F⁻¹_i
+                    push!(ΣF⁻¹_v[i], F⁻¹_i)
+                    #ΣF⁻¹_v[i][j] = F⁻¹_i
                 end
             else # linear interpolation
                 p₋ = pgrid_v[i][i_vec[i]-1]
@@ -448,8 +405,8 @@ function add_iicdf(F⁻¹_v, pgrid_v, tol=1e-12)
                 F⁻¹₋ = F⁻¹_v[i][i_vec[i]-1]
                 F⁻¹₊ = F⁻¹_v[i][i_vec[i]]
                 F⁻¹_i = F⁻¹₋ + (p₀ - p₋) * (F⁻¹₊ - F⁻¹₋) / (p₊ - p₋)
-                #push!(ΣF⁻¹_v[i], F⁻¹_i)   
-                ΣF⁻¹_v[i][j] = F⁻¹_i        
+                push!(ΣF⁻¹_v[i], F⁻¹_i)   
+                #ΣF⁻¹_v[i][j] = F⁻¹_i        
             end
         end
     end
