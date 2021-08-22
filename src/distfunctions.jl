@@ -111,7 +111,7 @@ function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-9)
     j = 1
     for i in 1:N
         x = xgrid[i]
-        while F⁻¹[j] <= x && j < M
+        while F⁻¹[j] < x && j < M
             j += 1
         end
         # now either F⁻¹[j] > x[i] or there exists no j: F⁻¹[M] <= x[i]
@@ -120,7 +120,7 @@ function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-9)
             F[i] = pgrid[1]
             #f[i] = 0
             continue
-        elseif j == M && F⁻¹[j] <= x
+        elseif j == M && F⁻¹[j] < x
             # F⁻¹[end] = F⁻¹(1) <= x[i] ⇒ icdf does not reach x[end] ⇒ fill up with ones
             F[i] = pgrid[end]
             #=if i == 1
