@@ -99,13 +99,13 @@ end
 """
 iicdf!(F, F⁻¹, xgrid, pgrid)
 
-Given a discrete icdf F⁻¹, writes its discrete cdf into F and its discrete pdf into f
+Given a discrete icdf F⁻¹, writes its discrete cdf into F
 
 F⁻¹ : [0,1] ∋ p ↦ inf { x: F(x) ≥ p } ∈ [0,L]
 
 Limited to length(F) == length(F⁻¹), uniform grids
 """
-function iicdf!(F, f, F⁻¹, xgrid, pgrid, tol=1e-9)
+function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-9)
     N = length(F)
     M = length(F⁻¹)
     j = 1
@@ -118,16 +118,16 @@ function iicdf!(F, f, F⁻¹, xgrid, pgrid, tol=1e-9)
         if j == 1 # x₀ := F⁻¹[1] = F⁻¹(0) > x[i] ⇒ icdf does not start at x[1]
             # return smallest p
             F[i] = pgrid[1]
-            f[i] = 0
+            #f[i] = 0
             continue
         elseif j == M && F⁻¹[j] <= x
             # F⁻¹[end] = F⁻¹(1) <= x[i] ⇒ icdf does not reach x[end] ⇒ fill up with ones
             F[i] = pgrid[end]
-            if i == 1
+            #=if i == 1
                 f[i] = F[i] / (xgrid[2] - xgrid[1])
             else
                 f[i] = (F[i] - F[i-1]) / (xgrid[i] - xgrid[i-1])
-            end
+            end=#
             continue
         else
             #quadratic interpolation
@@ -156,11 +156,11 @@ function iicdf!(F, f, F⁻¹, xgrid, pgrid, tol=1e-9)
 
             if abs(x₊-x₋) < tol
                 F[i] = p₊₊
-                if i == 1
+                #=if i == 1
                     f[i] = F[i] / (xgrid[2] - xgrid[1])
                 else
                     f[i] = (F[i] - F[i-1]) / (xgrid[i] - xgrid[i-1])
-                end
+                end=#
                 continue
             elseif abs(x₊₊-x₊) < tol
                 if j > 2
@@ -172,11 +172,12 @@ function iicdf!(F, f, F⁻¹, xgrid, pgrid, tol=1e-9)
                     x₊₊ = F⁻¹[j]
                 else
                     F[i] = p₊₊
+                    #=
                     if i == 1
                         f[i] = F[i] / (xgrid[2] - xgrid[1])
                     else
                         f[i] = (F[i] - F[i-1]) / (xgrid[i] - xgrid[i-1])
-                    end
+                    end=#
                     continue
                 end
             end
@@ -186,12 +187,12 @@ function iicdf!(F, f, F⁻¹, xgrid, pgrid, tol=1e-9)
                     + p₊ * (x-x₋)/(x₊-x₋) * (x-x₊₊)/(x₊-x₊₊) 
                     + p₊₊ * (x-x₋)/(x₊₊-x₋) * (x-x₊)/(x₊₊-x₊) )
 
-            f[i] = ( p₋ * 1/(x₋-x₊) * (x-x₊₊)/(x₋-x₊₊)
+            #=f[i] = ( p₋ * 1/(x₋-x₊) * (x-x₊₊)/(x₋-x₊₊)
                     + p₋ * (x-x₊)/(x₋-x₊) * 1/(x₋-x₊₊) 
                     + p₊ * 1/(x₊-x₋) * (x-x₊₊)/(x₊-x₊₊)
                     + p₊ * (x-x₋)/(x₊-x₋) * 1/(x₊-x₊₊)
                     + p₊₊ * 1/(x₊₊-x₋) * (x-x₊)/(x₊₊-x₊)
-                    + p₊₊ * (x-x₋)/(x₊₊-x₋) * 1/(x₊₊-x₊) )
+                    + p₊₊ * (x-x₋)/(x₊₊-x₋) * 1/(x₊₊-x₊) ) =#
 
             # fix values outside of allowed domain
             if F[i] < pgrid[1]
@@ -203,59 +204,37 @@ function iicdf!(F, f, F⁻¹, xgrid, pgrid, tol=1e-9)
     end
 end
 
-function get_pdf_from_cdf(a_cdf, xgrid; order=2)
-    N = length(a_cdf)
-    a_pdf_rr = zeros(N)
-    if order == 1
-        for i in eachindex(a_cdf)
-            if i == 1
-                a_pdf_rr[i] = (a_cdf[i] - 0) / (xgrid[i+1] - xgrid[i])
-            elseif i == N
-                a_pdf_rr[i] = (a_cdf[i] - a_cdf[i-1]) / (xgrid[i] - xgrid[i-1])
-            else
-                a_pdf_rr[i] = (a_cdf[i] - a_cdf[i-1]) / (xgrid[i] - xgrid[i-1])
-            end
-        end
-    elseif order == 2
-        for i in eachindex(a_cdf)
-            if i == 1
-                a_pdf_rr[i] = (-3/2*a_cdf[1] + 2*a_cdf[1+1] - 1/2*a_cdf[1+2]) / (xgrid[i+1] - xgrid[i]) #2nd order forward
-            elseif i == N
-                a_pdf_rr[i] = (3/2*a_cdf[i-2] - 2*a_cdf[i-1] + 1/2*a_cdf[i]) / (xgrid[i] - xgrid[i-1]) #2nd order backward
-            else
-                a_pdf_rr[i] = (a_cdf[i] - a_cdf[i-1]) / (xgrid[i+1] - xgrid[i-1])
-            end
-        end
-    else
-        error("not implemented")
-    end
-    return a_pdf_rr
-end
-
 """
-cdf_to_pdf!(f, F, xgrid)
+cdf_to_pdf!(f, F, Δx)
 
 Given a discrete cdf F, writes its discrete pdf into f
 """
-function cdf_to_pdf!(f, F, Δx)
+function cdf_to_pdf!(f, F, Δx; order=1)
     N = length(F)
-    f[1] = (-3/2*F[1] + 2*F[1+1] - 1/2*F[1+2]) / Δx #2nd order forward
-    #f[1] = (F[1] - 0) / Δx #1st order backwards   
-    #for i in 1:2
-    #    f[i] = (-25/12*F[i] + 4*F[i+1] - 3*F[i+2] + 4/3*F[i+3] - 1/4*F[i+4] ) / Δx #4th order forward
-    #end
-
-    for i in 3:(N-2)    
-    #for i in 2:(N-1)
-        #f[i] = (F[i+1] - F[i]) / Δx #1st order fwd 
-        #f[i] = (1/12*F[i-2] - 2/3*F[i-1] + 2/3*F[i+1] - 1/12*F[i+2]) / Δx #4th order centered
-        f[i] = 1/2*(F[i+1] - F[i-1]) / Δx #2nd order centered
+    if order == 1
+        f[1] = (F[1] - 0) / Δx #1st order backwards 
+        for i in 2:N
+            f[i] = (F[i] - F[i-1]) / Δx #1st order backwd. 
+        end
+    elseif order == 2
+        f[1] = (-3/2*F[1] + 2*F[1+1] - 1/2*F[1+2]) / Δx
+        for i in 2:(N-1)    
+            f[i] = 1/2*(F[i+1] - F[i-1]) / Δx #2nd order centered
+        end
+        f[N] = (3/2*F[N] - 2*F[N-1] + 1/2*F[N-2]) / Δx
+    elseif order == 4
+        for i in 1:2
+            f[i] = (-25/12*F[i] + 4*F[i+1] - 3*F[i+2] + 4/3*F[i+3] - 1/4*F[i+4] ) / Δx #4th order forward
+        end
+        for i in 3:(N-2)    
+            f[i] = (1/12*F[i-2] - 2/3*F[i-1] + 2/3*F[i+1] - 1/12*F[i+2]) / Δx #4th order centered
+        end
+        for i in (N-1):N
+            f[i] = (25/12*F[i] - 4*F[i-1] + 3*F[i-2] - 4/3*F[i-3] + 1/4*F[i-4] ) / Δx #4th order backward
+        end
+    else
+        error("implemented orders: 1, 2, 4")
     end
-    #f[N] = (1 - F[N]) / Δx #1st order fwd 
-    f[N] = (3/2*F[N] - 2*F[N-1] + 1/2*F[N-2]) / Δx #2nd order backward     
-    #for i in (N-1):N
-    #   f[i] = (25/12*F[i] - 4*F[i-1] + 3*F[i-2] - 4/3*F[i-3] + 1/4*F[i-4] ) / Δx #4th order backward
-    #end
 end
 
 """
