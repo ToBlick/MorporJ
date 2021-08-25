@@ -30,13 +30,12 @@ function barycenter_fit(t, a, Δx)
     end
     # linear term
     c = [dot(a[i], t[1]) for i in eachindex(a)]
-    # t_ = [dot(t[1],t[1])]
 
     #set up the problem
     x = Variable(n)
     set_value!(x, [1/n for _ in 1:n])
 
-    expression = quadform(x, M) - 2*dot(x,c) # + t_[1]
+    expression = quadform(x, M) - 2*dot(x,c)
     problem = minimize( expression , [x >= 0, sum(x) == 1])
 
     solver = () -> COSMO.Optimizer(verbose=false, max_iter = 100000)
@@ -45,7 +44,7 @@ function barycenter_fit(t, a, Δx)
     # optimal barycentric weights
     Λ[1] .= evaluate(x)
     # W₂ distance between optimal barycenter and target
-    ΔW[1] = Δx * evaluate( expression )
+    ΔW[1] = Δx * ( evaluate( expression ) + dot(t[1],t[1]) )
 
     # fit the rest of the targets
     for j in 2:k
@@ -53,7 +52,6 @@ function barycenter_fit(t, a, Δx)
         for i in eachindex(c)
             c[i] = dot(a[i], t[j])
         end
-        # t_ .= dot(t[j],t[j])
 
         # if the targets are somewhat ordered, last optimal x is a good starting point
         solve!(problem, solver; warmstart=true)
