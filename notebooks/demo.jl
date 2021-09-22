@@ -33,7 +33,7 @@ $B_{W^2}(Λ; f_1, \dots, f_n) = {\arg\min}_{g \in \mathcal P(\Omega)} \sum_{i=1}
 """
 
 # ╔═╡ 7a3a25b1-572b-40c9-a522-00cfa92af6b0
-@bind λ Slider(0:0.01:1; default=0.0, show_value=true)
+md""" λ = $(@bind λ Slider(0:0.01:1; default=0.0, show_value=true))"""
 
 # ╔═╡ e7c0fe22-4baf-4530-a63a-9ad211f26a8d
 md"Fit $(@bind fit CheckBox())"

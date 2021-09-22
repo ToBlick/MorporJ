@@ -12,7 +12,7 @@ such that
 Returns the weight vector Λ and the fitting W₂ errors Δ
 """
 
-function barycenter_fit(t, a, Δx)
+function barycenter_fit(t, a, Δx; max_iter=500000)
     
     n = length(a)
     k = length(t)
@@ -38,7 +38,7 @@ function barycenter_fit(t, a, Δx)
     expression = quadform(x, M) - 2*dot(x,c)
     problem = minimize( expression , [x >= 0, sum(x) == 1])
 
-    solver = () -> COSMO.Optimizer(verbose=false, max_iter = 100000)
+    solver = () -> COSMO.Optimizer(verbose=false, max_iter = max_iter)
     solve!(problem, solver; warmstart=true)
     
     # optimal barycentric weights
@@ -64,7 +64,7 @@ function barycenter_fit(t, a, Δx)
         ΔW[j] = Δx * (evaluate(expression) + dot(t[j],t[j]) )
     end
 
-    return Λ, ΔW
+    return Λ, sqrt.(abs.(ΔW))
 end
 
 function barycenter_fit_pgrid_projected(t, a, p_t, p_a, tol=1e-9)

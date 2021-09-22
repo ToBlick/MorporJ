@@ -111,23 +111,17 @@ function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-9)
     j = 1
     for i in 1:N
         x = xgrid[i]
-        while F⁻¹[j] < x && j < M
+        while F⁻¹[j] <= x && j < M
             j += 1
         end
         # now either F⁻¹[j] > x[i] or there exists no j: F⁻¹[M] <= x[i]
         if j == 1 # x₀ := F⁻¹[1] = F⁻¹(0) > x[i] ⇒ icdf does not start at x[1]
             # return smallest p
             F[i] = pgrid[1]
-            #f[i] = 0
             continue
         elseif j == M && F⁻¹[j] < x
             # F⁻¹[end] = F⁻¹(1) <= x[i] ⇒ icdf does not reach x[end] ⇒ fill up with ones
             F[i] = pgrid[end]
-            #=if i == 1
-                f[i] = F[i] / (xgrid[2] - xgrid[1])
-            else
-                f[i] = (F[i] - F[i-1]) / (xgrid[i] - xgrid[i-1])
-            end=#
             continue
         else
             #quadratic interpolation
@@ -156,11 +150,6 @@ function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-9)
 
             if abs(x₊-x₋) < tol
                 F[i] = p₊₊
-                #=if i == 1
-                    f[i] = F[i] / (xgrid[2] - xgrid[1])
-                else
-                    f[i] = (F[i] - F[i-1]) / (xgrid[i] - xgrid[i-1])
-                end=#
                 continue
             elseif abs(x₊₊-x₊) < tol
                 if j > 2
@@ -172,12 +161,6 @@ function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-9)
                     x₊₊ = F⁻¹[j]
                 else
                     F[i] = p₊₊
-                    #=
-                    if i == 1
-                        f[i] = F[i] / (xgrid[2] - xgrid[1])
-                    else
-                        f[i] = (F[i] - F[i-1]) / (xgrid[i] - xgrid[i-1])
-                    end=#
                     continue
                 end
             end
@@ -186,13 +169,6 @@ function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-9)
             F[i] = ( p₋ * (x-x₊)/(x₋-x₊) * (x-x₊₊)/(x₋-x₊₊) 
                     + p₊ * (x-x₋)/(x₊-x₋) * (x-x₊₊)/(x₊-x₊₊) 
                     + p₊₊ * (x-x₋)/(x₊₊-x₋) * (x-x₊)/(x₊₊-x₊) )
-
-            #=f[i] = ( p₋ * 1/(x₋-x₊) * (x-x₊₊)/(x₋-x₊₊)
-                    + p₋ * (x-x₊)/(x₋-x₊) * 1/(x₋-x₊₊) 
-                    + p₊ * 1/(x₊-x₋) * (x-x₊₊)/(x₊-x₊₊)
-                    + p₊ * (x-x₋)/(x₊-x₋) * 1/(x₊-x₊₊)
-                    + p₊₊ * 1/(x₊₊-x₋) * (x-x₊)/(x₊₊-x₊)
-                    + p₊₊ * (x-x₋)/(x₊₊-x₋) * 1/(x₊₊-x₊) ) =#
 
             # fix values outside of allowed domain
             if F[i] < pgrid[1]
@@ -213,15 +189,17 @@ function cdf_to_pdf!(f, F, Δx; order=1)
     N = length(F)
     if order == 1
         f[1] = (F[1] - 0) / Δx #1st order backwards 
-        for i in 2:N
+        for i in 2:(N)
             f[i] = (F[i] - F[i-1]) / Δx #1st order backwd. 
         end
     elseif order == 2
         f[1] = (-3/2*F[1] + 2*F[1+1] - 1/2*F[1+2]) / Δx
+        #f[1] = (-F[1] + F[1+1]) / Δx
         for i in 2:(N-1)    
             f[i] = 1/2*(F[i+1] - F[i-1]) / Δx #2nd order centered
         end
         f[N] = (3/2*F[N] - 2*F[N-1] + 1/2*F[N-2]) / Δx
+        #f[N] = (F[N] - F[N-1]) / Δx
     elseif order == 4
         for i in 1:2
             f[i] = (-25/12*F[i] + 4*F[i+1] - 3*F[i+2] + 4/3*F[i+3] - 1/4*F[i+4] ) / Δx #4th order forward
