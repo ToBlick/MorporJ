@@ -1,14 +1,87 @@
-using DelimitedFiles
+function get_S₁(S, Δx)
+    S₁ = zero(S)
+    N, nₜₚ = size(S)
+    mass = zeros(nₜₚ)
+    for i in 1:size(S,2)
+        mass[i] = sum(S[:,i]) * Δx
+        S₁[:,i] .= S[:,i] ./ mass[i]
+    end
+    return S₁, mass
+end
 
-"""
-load_from_txt(path)
+function get_s(S₁, Δx, xgrid, pgrid, tol_cdf=1e-12, tol_icdf=1e-6)
+    N, nₜₚ = size(S₁)
+    M = length(pgrid)
+    s_cdf = zeros(N)
+    s = [zeros(M) for _ in 1:nₜₚ]
 
-Returns the content of the delimited file at path (generated e.g. using writedlm in Julia or np.savetxt in Python)
-Checks if all entires are non-negative
-"""
-function load_from_txt(path)
+    for i in eachindex(s)
+        MorporJ.cdf!(s_cdf, S₁[:,i], Δx, tol_cdf)
+        MorporJ.icdf!(s[i], s_cdf, xgrid, pgrid, tol_icdf)
+    end
 
-    S = readdlm(path)
+    return s
+end
 
-    return readdlm(path)
+function test_interpolations(λ, mass, a, params, massₜ, paramsₜ, Sₜ, sₜ, ciₜ, Δx, xgrid, pgrid, tol_icdf)
+    M = length(pgrid)
+    nₜₚ = length(λ)
+    N, Nₜₚ = size(Sₜ)
+    n = length(a)
+    
+    itp, mass_itp = MorporJ.get_interpolates(params, λ, mass);
+
+    Sᵣ = zero(Sₜ)
+    Sₑ = zero(Sₜ)
+    #iSᵣ = zero(Sₜ)
+    #iSₜ = zero(Sₜ)
+
+    mᵣ = zeros(Nₜₚ)
+
+    _s = zeros(M)
+    _sₜ = zeros(M)
+    _s_cdf = zeros(N)
+    _s_pdf = zeros(N)
+
+    for k in 1:Nₜₚ
+        # recover the parameter values
+        indices = Tuple(ciₜ[k])
+    
+        _params = Tuple( paramsₜ[i][indices[i]] for i in 1:length(paramsₜ) )
+        _itp_params = ()
+        for i in 1:length(_params)
+            if length(paramsₜ[i]) != 1
+                _itp_params = (_itp_params..., _params[i])
+            end
+        end
+    
+        # interpolate mass and weights
+        _m = mass_itp(_itp_params...)
+        _λ = [ itp[i](_itp_params...) for i in 1:n  ]
+        _λ = MorporJ.proj_to_simplex(_λ)
+    
+        _s = zeros(M)
+        # barycenter icdf
+        for i in 1:n
+            _s += _λ[i] .* a[i]
+        end
+    
+        #iSᵣ[:,k] .= _s
+    
+        # calculate the density of the reconstruction
+        MorporJ.iicdf!(_s_cdf, _s, xgrid, pgrid, tol_icdf)
+        MorporJ.cdf_to_pdf!(_s_pdf, _s_cdf, Δx, 1)
+        Sᵣ[:,k] .= _s_pdf .* _m
+    
+        # calculate the density of the exact reconstruction
+        MorporJ.iicdf!(_s_cdf, sₜ[k], xgrid, pgrid, tol_icdf)
+        MorporJ.cdf_to_pdf!(_s_pdf, _s_cdf, Δx, 1)
+        Sₑ[:,k] .= _s_pdf .* massₜ[k]
+    
+        mᵣ[k] = _m
+    
+        #iSₜ[:,k] .= sₜ[k]
+    end
+
+    return Sᵣ, mᵣ, Sₑ
 end

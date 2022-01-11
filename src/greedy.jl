@@ -2,9 +2,10 @@ function greedy_algo!(s, a, Δx, basis_index; tol=1e-6, rtol=1e-1, max_iter_gree
     
     n = length(a) # number of atoms
     k = length(s) # size of training data
-    Λ = [ [zeros(n) for _ in 1:k] ]
-    ΔW = [ zeros(k) ]
+    Λ = [ ]
+    ΔW = [ ]
     ΔW_max = []
+    ΔW_avg = []
     
     Λ_int = [zeros(n) for _ in 1:k]
     ΔW_int = zeros(k)
@@ -18,23 +19,30 @@ function greedy_algo!(s, a, Δx, basis_index; tol=1e-6, rtol=1e-1, max_iter_gree
         push!(ΔW_max, Δ)
         push!(Λ, Λ_int)
         push!(ΔW, ΔW_int)
+        push!(ΔW_avg, sum(ΔW_int)/k )
 
-        print("Current W2 error: $Δ with atoms:")
+        @printf "------------------------------------- \n"
+        @printf "Iteration %.0f \n" iter
+        @printf "Maximum W2 error: %.2e \n" Δ
+        @printf "Average W2 error: %.2e \n" ΔW_avg[end]
+        @printf "Atoms used:"
         for idx in basis_index
-            print(" $idx")
+            @printf " %.0f" idx
         end
-        print(".\n")
+        @printf " \n"
+        @printf "------------------------------------- \n"
 
         
         # check relative tolerance
         if iter !=1 && (ΔW_max[end-1] - Δ)/ΔW_max[end-1] < rtol
             relative_error = ( ΔW_max[end-1] - Δ)/ΔW_max[end-1]
-            print("Relative tolerance not met - $relative_error. Removing last dictionary atom. \n")
+            print("Relative tolerance not met: Δᵣₑ = $relative_error. Removing last dictionary atom. \n")
             pop!(basis_index) # remove last basis addition that didnt substantially improve the fit
             pop!(a)
             pop!(Λ)
             pop!(ΔW)
             pop!(ΔW_max)
+            pop!(ΔW_avg)
             break
         # check absolute tolerance
         elseif Δ < tol
@@ -54,5 +62,20 @@ function greedy_algo!(s, a, Δx, basis_index; tol=1e-6, rtol=1e-1, max_iter_gree
         iter+=1
     end
     
-    return Λ, ΔW, ΔW_max, a, basis_index
+    return Λ, ΔW, ΔW_max, ΔW_avg, a, basis_index
+end
+
+
+function get_initial_atoms(s)
+    nₜₚ = length(s)
+
+    D = zeros(nₜₚ,nₜₚ)
+    for i in 1:nₜₚ
+        for j in i:nₜₚ
+            D[i,j] = norm(s[i]-s[j],2)
+        end
+    end
+    maxD = Tuple(argmax(D))
+
+    return [s[maxD[2]], s[maxD[1]]], [maxD[2], maxD[1]]
 end

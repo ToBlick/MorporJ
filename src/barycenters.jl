@@ -1,5 +1,5 @@
 """
-barycenter_fit(t, a, Δx)
+barycenter_fit(t, a, Δp)
 
 Given a k-vector of target icdfs t and a n-vector of atoms a, finds a vector of weights 
 
@@ -9,10 +9,10 @@ such that
 
 ‖ tⱼ - ∑ᵢ aᵢ λᵢʲ ‖₂ = ∑ⱼ W₂²(tⱼ, B(λ₁ʲ, …, λₙʲ; a₁, …, aₙ))  is minimal ∀j.
 
-Returns the weight vector Λ and the fitting W₂ errors Δ
+Returns the weight vector Λ and the fitting W₂ errors ΔW
 """
 
-function barycenter_fit(t, a, Δx; max_iter=500000)
+function barycenter_fit(t, a, Δp; max_iter=500000)
     
     n = length(a)
     k = length(t)
@@ -29,11 +29,11 @@ function barycenter_fit(t, a, Δx; max_iter=500000)
         end
     end
     # linear term
-    c = [dot(a[i], t[1]) for i in eachindex(a)]
+    c = [dot(a[i], t[1]) for i in eachindex(a)] # initial guess is λᵢ ≡ 1/n ∀ i
 
     #set up the problem
     x = Variable(n)
-    set_value!(x, [1/n for _ in 1:n])
+    set_value!(x, [1/n for _ in 1:n]) # initial guess 
 
     expression = quadform(x, M) - 2*dot(x,c)
     problem = minimize( expression , [x >= 0, sum(x) == 1])
@@ -44,7 +44,7 @@ function barycenter_fit(t, a, Δx; max_iter=500000)
     # optimal barycentric weights
     Λ[1] .= evaluate(x)
     # W₂ distance between optimal barycenter and target
-    ΔW[1] = Δx * ( evaluate( expression ) + dot(t[1],t[1]) )
+    ΔW[1] = Δp * ( evaluate( expression ) + dot(t[1],t[1]) )
 
     # fit the rest of the targets
     for j in 2:k
@@ -53,7 +53,8 @@ function barycenter_fit(t, a, Δx; max_iter=500000)
             c[i] = dot(a[i], t[j])
         end
 
-        # if the targets are somewhat ordered, last optimal x is a good starting point
+        # if the targets are somewhat ordered, last optimal x may also be a good starting point
+        set_value!(x, [1/n for _ in 1:n])
         solve!(problem, solver; warmstart=true)
 
         if !(Int(problem.status) in [1])
@@ -61,7 +62,7 @@ function barycenter_fit(t, a, Δx; max_iter=500000)
         end
         
         Λ[j] .= evaluate(x)
-        ΔW[j] = Δx * (evaluate(expression) + dot(t[j],t[j]) )
+        ΔW[j] = Δp * (evaluate(expression) + dot(t[j],t[j]) )
     end
 
     return Λ, sqrt.(abs.(ΔW))

@@ -1,12 +1,11 @@
 module MorporJ
 
-using LinearAlgebra, Convex, COSMO
+using LinearAlgebra, Convex, COSMO, Printf, Interpolations
 
 include("distfunctions.jl")
 include("io.jl")
 include("barycenters.jl")
 include("greedy.jl")
-
-greet() = print("Hello World!")
+include("interpolations.jl")
 
 end # module

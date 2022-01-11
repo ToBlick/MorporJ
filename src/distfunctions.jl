@@ -5,7 +5,7 @@ Given a discrete pdf f, writes its cdf into F. The value in F[i] includes the in
 
 Limited to length(f) == length(xgrid)-1 == length(F)
 """
-function cdf!(F, f, Δx, tol = 1e-12)
+function cdf!(F, f, Δx, tol = 1e-9)
     F[1] = f[1] * Δx
     for i in 2:length(f)
         F[i] = F[i-1] + f[i] * Δx
@@ -24,7 +24,7 @@ F⁻¹ : [0,1] ∋ p ↦ inf { x: F(x) ≥ p } ∈ [0,L]
 
 Limited to length(F) == length(F⁻¹), uniform grids
 """
-function icdf!(F⁻¹, F, xgrid, pgrid, tol = 1e-9)
+function icdf!(F⁻¹, F, xgrid, pgrid, tol = 1e-6)
     N = length(F)
     M = length(F⁻¹)
     i = 1
@@ -33,7 +33,7 @@ function icdf!(F⁻¹, F, xgrid, pgrid, tol = 1e-9)
         while F[i] < p && i < N
             i += 1
         end
-        if i == 1 # p₀ := F[1] ≥ p[j] ⇒ cdf does not start at zero
+        if i == 1 # p₀ := F[1] ≥ p[j] ⇒ cdf does not start at zero or p₀ = 0 = F[1]
             # return smallest x
             F⁻¹[j] = xgrid[1]
             continue
@@ -45,9 +45,9 @@ function icdf!(F⁻¹, F, xgrid, pgrid, tol = 1e-9)
             continue
         else
             #quadratic interpolation
-            if i == N || (1 - F[i+1]) < tol # the p[j] = 1 case: F[i], F[i+1], … will be 1.
+            if i == N || (1 - F[i+1]) < tol # Do not interpolate over the kink.
                 if i < 3 # dirac delta case
-                    F⁻¹[j] = xgrid[i-2]
+                    F⁻¹[j] = xgrid[1]
                     continue
                 end
                 p₋ = F[i-2]
@@ -105,17 +105,17 @@ F⁻¹ : [0,1] ∋ p ↦ inf { x: F(x) ≥ p } ∈ [0,L]
 
 Limited to length(F) == length(F⁻¹), uniform grids
 """
-function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-9)
+function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-6)
     N = length(F)
     M = length(F⁻¹)
     j = 1
     for i in 1:N
         x = xgrid[i]
-        while F⁻¹[j] <= x && j < M
+        while F⁻¹[j] < x && j < M
             j += 1
         end
-        # now either F⁻¹[j] > x[i] or there exists no j: F⁻¹[M] <= x[i]
-        if j == 1 # x₀ := F⁻¹[1] = F⁻¹(0) > x[i] ⇒ icdf does not start at x[1]
+        # now either F⁻¹[j] >= x[i] or there exists no j: F⁻¹[M] <= x[i]
+        if j == 1 # x₀ := F⁻¹[1] = F⁻¹(0) >= x[i] ⇒ icdf does not start at x[1] or 
             # return smallest p
             F[i] = pgrid[1]
             continue
@@ -125,14 +125,14 @@ function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-9)
             continue
         else
             #quadratic interpolation
-            if i == 1 && j <= (M-2) # kink at x = 0 in the cdf
-                p₋ = pgrid[j]
-                p₊ = pgrid[j+1]
-                p₊₊ = pgrid[j+2]
-                x₋ = F⁻¹[j]
-                x₊ = F⁻¹[j+1]
-                x₊₊ = F⁻¹[j+2]
-            elseif j == M
+            #if i == 1 && j <= (M-2) # kink at x = 0 in the cdf
+            #    p₋ = pgrid[j]
+            #    p₊ = pgrid[j+1]
+            #    p₊₊ = pgrid[j+2]
+            #    x₋ = F⁻¹[j]
+            #    x₊ = F⁻¹[j+1]
+            #    x₊₊ = F⁻¹[j+2]
+            if j == M
                 p₋ = pgrid[j-2]
                 p₊ = pgrid[j-1]
                 p₊₊ = pgrid[j]
@@ -149,7 +149,7 @@ function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-9)
             end
 
             if abs(x₊-x₋) < tol
-                F[i] = p₊₊
+                F[i] = p₊
                 continue
             elseif abs(x₊₊-x₊) < tol
                 if j > 2
@@ -160,7 +160,7 @@ function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-9)
                     x₊ = F⁻¹[j-1]
                     x₊₊ = F⁻¹[j]
                 else
-                    F[i] = p₊₊
+                    F[i] = p₊
                     continue
                 end
             end
@@ -185,7 +185,7 @@ cdf_to_pdf!(f, F, Δx)
 
 Given a discrete cdf F, writes its discrete pdf into f
 """
-function cdf_to_pdf!(f, F, Δx; order=1)
+function cdf_to_pdf!(f, F, Δx, order=1)
     N = length(F)
     if order == 1
         f[1] = (F[1] - 0) / Δx #1st order backwards 
