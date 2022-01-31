@@ -111,7 +111,7 @@ function iicdf!(F, F⁻¹, xgrid, pgrid, tol=1e-6)
     j = 1
     for i in 1:N
         x = xgrid[i]
-        while F⁻¹[j] < x && j < M
+        while F⁻¹[j] <= x && j < M
             j += 1
         end
         # now either F⁻¹[j] >= x[i] or there exists no j: F⁻¹[M] <= x[i]

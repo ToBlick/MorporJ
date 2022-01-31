@@ -34,8 +34,8 @@ function greedy_algo!(s, a, Δx, basis_index; tol=1e-6, rtol=1e-1, max_iter_gree
 
         
         # check relative tolerance
-        if iter !=1 && (ΔW_max[end-1] - Δ)/ΔW_max[end-1] < rtol
-            relative_error = ( ΔW_max[end-1] - Δ)/ΔW_max[end-1]
+        if iter !=1 && (ΔW_avg[end-1] - Δ)/ΔW_avg[end-1] < rtol
+            relative_error = ( ΔW_avg[end-1] - Δ)/ΔW_avg[end-1]
             print("Relative tolerance not met: Δᵣₑ = $relative_error. Removing last dictionary atom. \n")
             pop!(basis_index) # remove last basis addition that didnt substantially improve the fit
             pop!(a)
@@ -45,7 +45,7 @@ function greedy_algo!(s, a, Δx, basis_index; tol=1e-6, rtol=1e-1, max_iter_gree
             pop!(ΔW_avg)
             break
         # check absolute tolerance
-        elseif Δ < tol
+        elseif ΔW_avg[end] < tol
             print("Absolute tolerance met.")
             break
         # check maximum iterations
