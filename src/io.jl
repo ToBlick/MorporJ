@@ -17,7 +17,7 @@ function get_s(S₁, Δx, xgrid, pgrid, tol_cdf=1e-12, tol_icdf=1e-6)
 
     for i in eachindex(s)
         MorporJ.cdf!(s_cdf, S₁[:,i], Δx, tol_cdf)
-        MorporJ.icdf!(s[i], s_cdf, xgrid, pgrid, tol_icdf)
+        MorporJ.inv_F!(s[i], s_cdf, xgrid, pgrid, tol_icdf)
     end
 
     return s
@@ -28,18 +28,16 @@ function test_interpolations(λ, mass, a, params, massₜ, paramsₜ, Sₜ, sₜ
     nₜₚ = length(λ)
     N, Nₜₚ = size(Sₜ)
     n = length(a)
-    
+
+    # build the interpolations
     itp, mass_itp = MorporJ.get_interpolates(params, λ, mass);
 
     Sᵣ = zero(Sₜ)
     Sₑ = zero(Sₜ)
-    #iSᵣ = zero(Sₜ)
-    #iSₜ = zero(Sₜ)
 
     mᵣ = zeros(Nₜₚ)
 
     _s = zeros(M)
-    _sₜ = zeros(M)
     _s_cdf = zeros(N)
     _s_pdf = zeros(N)
 
@@ -60,27 +58,23 @@ function test_interpolations(λ, mass, a, params, massₜ, paramsₜ, Sₜ, sₜ
         _λ = [ itp[i](_itp_params...) for i in 1:n  ]
         _λ = MorporJ.proj_to_simplex(_λ)
     
-        _s = zeros(M)
         # barycenter icdf
+        _s .= 0
         for i in 1:n
             _s += _λ[i] .* a[i]
         end
     
-        #iSᵣ[:,k] .= _s
-    
         # calculate the density of the reconstruction
-        MorporJ.iicdf!(_s_cdf, _s, xgrid, pgrid, tol_icdf)
+        MorporJ.inv_F!(_s_cdf, _s, pgrid, xgrid, tol_icdf)
         MorporJ.cdf_to_pdf!(_s_pdf, _s_cdf, Δx, 1)
         Sᵣ[:,k] .= _s_pdf .* _m
     
         # calculate the density of the exact reconstruction
-        MorporJ.iicdf!(_s_cdf, sₜ[k], xgrid, pgrid, tol_icdf)
+        MorporJ.inv_F!(_s_cdf, sₜ[k], pgrid, xgrid, tol_icdf)
         MorporJ.cdf_to_pdf!(_s_pdf, _s_cdf, Δx, 1)
         Sₑ[:,k] .= _s_pdf .* massₜ[k]
     
         mᵣ[k] = _m
-    
-        #iSₜ[:,k] .= sₜ[k]
     end
 
     return Sᵣ, mᵣ, Sₑ

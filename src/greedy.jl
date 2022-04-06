@@ -1,4 +1,4 @@
-function greedy_algo!(s, a, Δx, basis_index; tol=1e-6, rtol=1e-1, max_iter_greedy=25, max_iter_solver=1000000)
+function greedy_algo!(s, a, Δx, basis_index; tol=1e-6, rtol=1e-1, max_iter_greedy=25, max_iter_solver=Int(1e7), eps_abs_solver=1e-9, eps_rel_solver=1e-6)
     
     n = length(a) # number of atoms
     k = length(s) # size of training data
@@ -13,7 +13,7 @@ function greedy_algo!(s, a, Δx, basis_index; tol=1e-6, rtol=1e-1, max_iter_gree
     iter=1
     
     while iter <= max_iter_greedy
-        Λ_int, ΔW_int = barycenter_fit(s, a, Δx, max_iter=max_iter_solver)
+        Λ_int, ΔW_int = barycenter_fit(s, a, Δx, max_iter_solver, eps_abs_solver, eps_rel_solver)
         
         Δ = maximum(ΔW_int)
         push!(ΔW_max, Δ)
@@ -34,8 +34,8 @@ function greedy_algo!(s, a, Δx, basis_index; tol=1e-6, rtol=1e-1, max_iter_gree
 
         
         # check relative tolerance
-        if iter !=1 && (ΔW_avg[end-1] - Δ)/ΔW_avg[end-1] < rtol
-            relative_error = ( ΔW_avg[end-1] - Δ)/ΔW_avg[end-1]
+        if iter !=1 && (ΔW_avg[end-1] - ΔW_avg[end])/ΔW_avg[end-1] < rtol
+            relative_error = ( ΔW_avg[end-1] - ΔW_avg[end])/ΔW_avg[end-1]
             print("Relative tolerance not met: Δᵣₑ = $relative_error. Removing last dictionary atom. \n")
             pop!(basis_index) # remove last basis addition that didnt substantially improve the fit
             pop!(a)
@@ -55,6 +55,10 @@ function greedy_algo!(s, a, Δx, basis_index; tol=1e-6, rtol=1e-1, max_iter_gree
         # add next atom
         else
             i_star=argmax(ΔW_int)
+            if i_star in basis_index
+                print("Duplicate atom found \n")
+                break
+            end
             print("Adding snapshot number: $i_star \n")
             push!(a, s[i_star])
             push!(basis_index, i_star)
