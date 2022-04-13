@@ -50,7 +50,7 @@ md"""λ₂ = $(@bind λ₂ Slider(0:0.01:1; default=0.0, show_value=true))"""
 begin
 	### Example 1 ###
 	n=2
-	x = collect(0:0.001:20)
+	x = collect(0:0.01:20)
 	N = length(x)
 	Δx = x[2]-x[1]
 	f₁ = zeros(N)
@@ -64,7 +64,7 @@ begin
 	g ./= sum(g*Δx)
 	f = [f₁, f₂]
 
-	p = collect(0:0.0001:1)
+	p = collect(0:0.00001:1)
 	M = length(p)
 	F = [zeros(N) for i in 1:n]
 	F⁻¹ = [zeros(M) for i in 1:n]
@@ -73,11 +73,11 @@ begin
 
 	for i in 1:n
 		MorporJ.cdf!(F[i], f[i], Δx)
-		MorporJ.icdf!(F⁻¹[i], F[i], x, p)
+		MorporJ.inv_F!(F⁻¹[i], F[i], x, p, 1e-12)
 	end
 	# Barycenter
 	B⁻¹ = (1-λ)*F⁻¹[1] + λ*F⁻¹[2]
-	MorporJ.iicdf!(B, B⁻¹, x, p, 1e-12)
+	MorporJ.inv_F!(B, B⁻¹, p, x, 1e-12)
 	MorporJ.cdf_to_pdf!(b, B, Δx)
 	for i in eachindex(b)
 		b[i] < 0 ? b[i] = 0 : nothing
@@ -88,7 +88,7 @@ end;
 plot(x, [f, (1-λ_L2)*f[1]+λ_L2*f[2]], ylimits=[0,1], label=["a₁" "a₂" "λ₁a₁ + λ₂a₂"], linewidth=[1 1 3], legendfontsize=10)
 
 # ╔═╡ 96420763-da4e-47de-9fbd-8ba6e24d655f
-plot(x, [f, b], ylimits=[0,(λ+1-λ)], label=["a₁" "a₂" "(λ₁id + λ₂T)#a₁"], linewidth=[1 1 3], legendfontsize=10)
+plot(x, [f, b], ylimits=[0,(λ+1-λ)], label=["a₁" "a₂" "(λ₁id + λ₂T)#a₁"], linewidth=[1 1 2], legendfontsize=10)
 
 # ╔═╡ 41b82709-19d5-489c-8486-13fde19eece2
 begin
@@ -107,12 +107,12 @@ begin
 
 	for i in 1:nₑ
 		MorporJ.cdf!(Fₑ[i], fₑ[i], Δx)
-		MorporJ.icdf!(F⁻¹ₑ[i], Fₑ[i], x, p)
+		MorporJ.inv_F!(F⁻¹ₑ[i], Fₑ[i], x, p, 1e-12)
 	end
 	λ₃ = 1-λ₁-λ₂
 	# Barycenter
 	B⁻¹ₑ = λ₁*F⁻¹ₑ[1] + λ₂*F⁻¹ₑ[2] + λ₃*F⁻¹ₑ[3]
-	MorporJ.iicdf!(Bₑ, B⁻¹ₑ, x, p, 1e-12)
+	MorporJ.inv_F!(Bₑ, B⁻¹ₑ, p, x, 1e-12)
 	MorporJ.cdf_to_pdf!(bₑ, Bₑ, Δx)
 	for i in eachindex(bₑ)
 		bₑ[i] < 0 ? bₑ[i] = 0 : nothing
@@ -120,7 +120,7 @@ begin
 end;
 
 # ╔═╡ 19f912c0-5ec4-4d80-8977-7c7a12aa90d2
-plot(x, [fₑ, bₑ], ylimits=[0,1+0*(λ₁+λ₂)], label=["a₁" "a₂" "a₃" "B(Λ)"], linewidth=[1 1 1], legend = :topleft, legendfontsize=10)
+plot(x, [fₑ, bₑ], ylimits=[0,1+0*(λ₁+λ₂)], label=["a₁" "a₂" "a₃" "B(Λ)"], linewidth=[1 1 1 2], legend = :topleft, legendfontsize=10)
 
 # ╔═╡ 44105627-7662-4ada-9a81-d9f232f41c7e
 md"""λ₃ = $(round(λ₃,digits=2))"""
@@ -133,7 +133,7 @@ md"""λ₃ = $(round(λ₃,digits=2))"""
 # ╟─96420763-da4e-47de-9fbd-8ba6e24d655f
 # ╟─7a3a25b1-572b-40c9-a522-00cfa92af6b0
 # ╟─0c676bce-3964-43b8-96c6-b9e54b5db9f5
-# ╠═19f912c0-5ec4-4d80-8977-7c7a12aa90d2
+# ╟─19f912c0-5ec4-4d80-8977-7c7a12aa90d2
 # ╟─9ce7e85d-6d39-4cad-8146-456e97d01e0e
 # ╟─ad9dfabf-4dbb-4b32-93cf-94782fd294c6
 # ╟─44105627-7662-4ada-9a81-d9f232f41c7e

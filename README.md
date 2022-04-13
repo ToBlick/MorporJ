@@ -1,0 +1,2 @@
+# MorporJ
+This package contains the routines used to produce the results reported in the report "Wasserstein Model Reduction Approach for Parametrized Flow Problems in Porous Media". Furthermore, there are three interactive notebooks: `demo.jl` demonstrates the behavior of weighted Wasserstein barycenters for exemplary distributions as one varies the weights, `demo_morpor.jl` features the functions used for the numerical experiments in the report, and `morpor.ipynb` reproduces the figures shown in the report.

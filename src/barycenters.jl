@@ -12,7 +12,7 @@ such that
 Returns the weight vector Λ and the fitting W₂ errors ΔW
 """
 
-function barycenter_fit(t, a, Δp, max_iter=1e7, eps_abs=1e-9, eps_rel=1e-6)
+function barycenter_fit(t, a, Δp, max_iter=Int(1e7), eps_abs=1e-9, eps_rel=1e-6)
     
     n = length(a)
     k = length(t)
